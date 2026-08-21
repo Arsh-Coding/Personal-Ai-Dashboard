@@ -24,6 +24,12 @@ export function AccountSwitcher({
   const active = tenantMeta(value);
   const activeStatus = statuses?.[value];
 
+  /** An expired grant reads differently from one that was never set up. */
+  const labelFor = (status?: TenantConnection) =>
+    status?.plugins.some((p) => p.state === "needs_reauth")
+      ? "authorization expired"
+      : "not connected";
+
   return (
     <div className="flex flex-col gap-1">
       <div
@@ -42,7 +48,11 @@ export function AccountSwitcher({
               role="tab"
               type="button"
               aria-selected={isActive}
-              title={needsAuth ? `${t.email} — not connected` : t.email}
+              title={
+                needsAuth
+                  ? `${t.email} — ${labelFor(statuses?.[t.id])}`
+                  : t.email
+              }
               disabled={disabled}
               onClick={() => onChange(t.id)}
               className={[
@@ -72,7 +82,7 @@ export function AccountSwitcher({
           onClick={onConnect}
           className="px-1 text-left text-[10px] font-medium text-amber-400 hover:text-amber-300"
         >
-          {active.email} — not connected, click to authorize
+          {active.email} — {labelFor(activeStatus)}, click to authorize
         </button>
       ) : (
         <span className="px-1 text-[10px] text-slate-500">{active.email}</span>

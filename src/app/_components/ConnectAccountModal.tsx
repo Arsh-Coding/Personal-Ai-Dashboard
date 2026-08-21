@@ -43,16 +43,36 @@ export function ConnectAccountModal({
 
   const nextPending = status?.pending[0];
 
+  // An expired grant is a different problem from a missing one, and only one of
+  // the two is the user's fault. Google will not renew a revoked refresh token,
+  // so consent is the only route back — say that rather than implying the
+  // account was never set up.
+  const isReauth = (status?.plugins ?? []).some(
+    (p) => p.state === "needs_reauth",
+  );
+
   return (
     <ModalPortal isOpen={isOpen} onClose={onClose} cardClassName="max-w-md">
       <h3 className="text-lg font-semibold text-slate-100">
-        Connect {account.label}
+        {isReauth ? "Reconnect" : "Connect"} {account.label}
       </h3>
       <p className="mt-1 text-xs text-slate-400">
-        This account has no Google authorization yet, so its calendar and mail
-        come back empty. Sign in as{" "}
-        <span className="font-medium text-slate-200">{account.email}</span> to
-        connect it.
+        {isReauth ? (
+          <>
+            Google expired this account&apos;s authorization, so calls fail with{" "}
+            <code className="text-slate-300">invalid_grant</code>. A refresh
+            token can&apos;t be renewed — sign in again as{" "}
+            <span className="font-medium text-slate-200">{account.email}</span>{" "}
+            to issue a new one.
+          </>
+        ) : (
+          <>
+            This account has no Google authorization yet, so its calendar and
+            mail come back empty. Sign in as{" "}
+            <span className="font-medium text-slate-200">{account.email}</span>{" "}
+            to connect it.
+          </>
+        )}
       </p>
 
       {error && (
@@ -64,6 +84,7 @@ export function ConnectAccountModal({
       <div className="mt-4 space-y-2">
         {(status?.plugins ?? []).map((plugin) => {
           const isConnected = plugin.state === "connected";
+          const isExpired = plugin.state === "needs_reauth";
           return (
             <div
               key={plugin.id}
@@ -73,12 +94,20 @@ export function ConnectAccountModal({
                 <div className="text-sm font-medium text-slate-200">
                   {pluginMeta(plugin.id).label}
                 </div>
-                <div className="text-[11px] text-slate-500">
+                <div
+                  className={
+                    isExpired
+                      ? "text-[11px] text-amber-400"
+                      : "text-[11px] text-slate-500"
+                  }
+                >
                   {plugin.state === "missing_credentials"
                     ? "App credentials not configured — run corsair setup"
-                    : isConnected
-                      ? "Connected"
-                      : "Not connected"}
+                    : isExpired
+                      ? "Authorization expired — reconnect to continue"
+                      : isConnected
+                        ? "Connected"
+                        : "Not connected"}
                 </div>
               </div>
 
@@ -94,7 +123,11 @@ export function ConnectAccountModal({
                   }
                   className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
                 >
-                  {getConnectUrl.isPending ? "Opening..." : "Connect"}
+                  {getConnectUrl.isPending
+                    ? "Opening..."
+                    : isExpired
+                      ? "Reconnect"
+                      : "Connect"}
                 </button>
               )}
             </div>
@@ -129,7 +162,7 @@ export function ConnectAccountModal({
           >
             {getConnectUrl.isPending
               ? "Opening Google..."
-              : `Connect ${pluginMeta(nextPending).label}`}
+              : `${isReauth ? "Reconnect" : "Connect"} ${pluginMeta(nextPending).label}`}
           </button>
         )}
       </div>

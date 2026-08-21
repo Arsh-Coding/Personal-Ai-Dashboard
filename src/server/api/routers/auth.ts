@@ -4,6 +4,7 @@ import { createTRPCRouter, publicProcedure } from "@/server/api/trpc";
 import { corsair, OAUTH_REDIRECT_URI, tenantInput } from "@/server/corsair";
 import { PLUGIN_IDS, type TenantConnection } from "@/lib/plugins";
 import { TENANTS, tenantMeta, type TenantId } from "@/lib/tenants";
+import { probeConnection } from "@/server/authHealth";
 
 export const authRouter = createTRPCRouter({
   /**
@@ -21,10 +22,26 @@ export const authRouter = createTRPCRouter({
           tenantId: t.id,
         });
 
-        const plugins = PLUGIN_IDS.map((id) => ({
-          id,
-          state: status[id] ?? "not_connected",
-        }));
+        // ...but a *stored* token is not a *working* one. Corsair keeps
+        // reporting `connected` for a grant Google has revoked, so anything it
+        // calls connected gets verified for real; `probeConnection` downgrades
+        // the dead ones to `needs_reauth`. Every other state it reports is
+        // already accurate and needs no network call.
+        //
+        // All pairs in parallel so the whole check costs one round trip, and
+        // usually none at all — a cached token with time left is proof enough.
+        const plugins = await Promise.all(
+          PLUGIN_IDS.map(async (id) => {
+            const reported = status[id] ?? "not_connected";
+            return {
+              id,
+              state:
+                reported === "connected"
+                  ? await probeConnection(t.id, id)
+                  : reported,
+            };
+          }),
+        );
         const pending = plugins
           .filter((p) => p.state !== "connected")
           .map((p) => p.id);

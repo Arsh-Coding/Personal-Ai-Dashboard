@@ -82,7 +82,7 @@ export function Dashboard() {
         <div>
           <div className="flex items-center gap-3">
             <h1 className="bg-linear-to-r from-purple-400 via-indigo-300 to-pink-400 bg-clip-text text-3xl font-extrabold tracking-tight text-transparent">
-              Corsair Workspace
+              Arsh Workspace
             </h1>
             <span className="rounded-full border border-purple-500/30 bg-purple-500/10 px-3 py-1 text-xs font-semibold text-purple-300">
               Live Sync

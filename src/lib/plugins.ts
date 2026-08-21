@@ -22,17 +22,25 @@ export function pluginMeta(id: PluginId) {
 }
 
 /**
- * Mirrors Corsair's `PluginConnectionState`. Declared here rather than imported
- * from `corsair` so this stays a client-safe module.
+ * Mirrors Corsair's `PluginConnectionState`, plus one state Corsair cannot
+ * report. Declared here rather than imported from `corsair` so this stays a
+ * client-safe module.
  *
  * `missing_credentials` means the *app's* client_id/secret are unset (a
  * `corsair setup` problem, the same for every account); `not_connected` means
  * this particular account never completed consent, which is what the connect
  * flow fixes.
+ *
+ * `needs_reauth` is ours: Corsair's `connectionStatus` only checks that an
+ * access token was *stored*, so a grant Google has since revoked still reports
+ * `connected` while every call fails with `invalid_grant`. `probeConnection`
+ * downgrades those to this state so the UI can offer the one fix that works —
+ * consent again. See `@/server/authHealth`.
  */
 export type ConnectionState =
   | "connected"
   | "missing_credentials"
+  | "needs_reauth"
   | "not_connected";
 
 /** Connection state of one account, as reported by `auth.listStatuses`. */
