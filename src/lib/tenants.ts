@@ -1,3 +1,4 @@
+
 /**
  * Connected Google accounts, one Corsair tenant each.
  *
@@ -21,10 +22,28 @@ export const TENANTS = [
     email: "arshpreet.singh@jungleworks.com",
     accent: "indigo",
   },
+  {
+    id: "finance",
+    label: "Finance",
+    email: "gamersgrip888@gmail.com",
+    accent: "black"
+  }
 ] as const;
 
 export type TenantId = (typeof TENANTS)[number]["id"];
 
+/**
+ * Accents in use, derived from `TENANTS` rather than declared separately so the
+ * two can't drift.
+ *
+ * Consumers map this to real classes with a `Record<TenantAccent, ...>`, which
+ * makes a new accent a compile error until it's styled — see
+ * `ACTIVE_TAB_CLASSES` in `AccountSwitcher`. The classes can't be built by
+ * interpolating the accent (`bg-${accent}-600`), because Tailwind only emits CSS
+ * for class names it can read literally in the source.
+ */
+export type TenantAccent = (typeof TENANTS)[number]["accent"];
+  
 export const TENANT_IDS = TENANTS.map((t) => t.id) as [TenantId, ...TenantId[]];
 
 export const DEFAULT_TENANT: TenantId = "personal";

@@ -1,7 +1,34 @@
 "use client";
 
-import { TENANTS, tenantMeta, type TenantId } from "@/lib/tenants";
+import {
+  TENANTS,
+  tenantMeta,
+  type TenantAccent,
+  type TenantId,
+} from "@/lib/tenants";
 import type { TenantConnection } from "@/lib/plugins";
+
+/**
+ * Selected-tab styling per accent.
+ *
+ * Keyed by `TenantAccent`, so adding an account with a new accent fails to
+ * compile until it's styled here — the previous two-branch conditional just fell
+ * through to indigo, which typechecked fine and quietly gave every new account
+ * the same colour as Jungleworks.
+ *
+ * Each value is a complete literal class string on purpose. Tailwind scans source
+ * text for class names, so a template like `bg-${accent}-600` produces no CSS.
+ */
+const ACTIVE_TAB_CLASSES: Record<TenantAccent, string> = {
+  purple: "bg-purple-600 text-white shadow-lg shadow-purple-600/20",
+  indigo: "bg-indigo-600 text-white shadow-lg shadow-indigo-600/20",
+  // Black sits darker than the slate-900/70 track it's on, so a coloured glow
+  // reads as nothing. A ring supplies the edge the shadow does for the others.
+  black: "bg-black text-white ring-1 ring-slate-500 shadow-lg shadow-black/40",
+};
+
+const INACTIVE_TAB_CLASSES =
+  "text-slate-400 hover:bg-slate-800/70 hover:text-slate-200";
 
 interface AccountSwitcherProps {
   value: TenantId;
@@ -58,10 +85,8 @@ export function AccountSwitcher({
               className={[
                 "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-50",
                 isActive
-                  ? t.accent === "purple"
-                    ? "bg-purple-600 text-white shadow-lg shadow-purple-600/20"
-                    : "bg-indigo-600 text-white shadow-lg shadow-indigo-600/20"
-                  : "text-slate-400 hover:bg-slate-800/70 hover:text-slate-200",
+                  ? ACTIVE_TAB_CLASSES[t.accent]
+                  : INACTIVE_TAB_CLASSES,
               ].join(" ")}
             >
               {needsAuth && (

@@ -179,7 +179,10 @@ export function Dashboard() {
 
         {/* Mail Section */}
         <section className="lg:col-span-5">
-          <MailPanel tenant={tenant} />
+          {/* Keyed by account so switching resets which thread is expanded and
+              which body is open, rather than carrying one account's reading
+              position into another's inbox. */}
+          <MailPanel key={tenant} tenant={tenant} />
         </section>
       </div>
 

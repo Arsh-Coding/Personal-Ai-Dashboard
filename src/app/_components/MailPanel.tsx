@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { api } from "@/trpc/react";
 import { ComposeMailModal } from "./ComposeMailModal";
+import { MessageModal } from "./MessageModal";
+import type { MailListMessage } from "@/server/api/routers/mail";
 import type { TenantId } from "@/lib/tenants";
 
 interface MailPanelProps {
@@ -13,6 +15,11 @@ interface MailPanelProps {
 export function MailPanel({ tenant }: MailPanelProps) {
   const [isComposeOpen, setIsComposeOpen] = useState(false);
   const [expandedThreadId, setExpandedThreadId] = useState<string | null>(null);
+  /**
+   * The message being read full-size. Holds the row rather than just an id so the
+   * modal header can show sender and subject without another lookup.
+   */
+  const [viewing, setViewing] = useState<MailListMessage | null>(null);
 
   const { data: threads, refetch: refetchThreads, isLoading } =
     api.mail.getThreads.useQuery({ tenant });
@@ -38,14 +45,15 @@ export function MailPanel({ tenant }: MailPanelProps) {
    */
   const latestDateByThread = new Map<string, number>();
   for (const msg of messages ?? []) {
-    const at = Number((msg as any).internalDate ?? 0);
-    const threadId = (msg as any).threadId;
-    if (!threadId || !Number.isFinite(at)) continue;
-    latestDateByThread.set(threadId, Math.max(latestDateByThread.get(threadId) ?? 0, at));
+    const at = Number(msg.internalDate ?? 0);
+    if (!msg.threadId || !Number.isFinite(at)) continue;
+    latestDateByThread.set(
+      msg.threadId,
+      Math.max(latestDateByThread.get(msg.threadId) ?? 0, at),
+    );
   }
   const sortedThreads = [...(threads ?? [])].sort(
-    (a: any, b: any) =>
-      (latestDateByThread.get(b.id) ?? 0) - (latestDateByThread.get(a.id) ?? 0),
+    (a, b) => (latestDateByThread.get(b.id) ?? 0) - (latestDateByThread.get(a.id) ?? 0),
   );
 
   return (
@@ -87,15 +95,21 @@ export function MailPanel({ tenant }: MailPanelProps) {
             No cached mail threads. Authenticate Gmail via Corsair and click &quot;Sync Mail&quot;.
           </div>
         ) : (
-          sortedThreads.map((thread: any) => {
-            const threadMessages = (messages ?? []).filter((m: any) => m.threadId === thread.id);
-            const latestMsg = threadMessages[threadMessages.length - 1] || thread;
-            const snippet = latestMsg.snippet || thread.snippet || "No snippet available";
+          sortedThreads.map((thread, threadIdx) => {
+            const threadMessages = (messages ?? []).filter(
+              (m) => m.threadId === thread.id,
+            );
+            // Read thread and message fields separately rather than falling back
+            // from one to the other: only a message carries headers, and merging
+            // the two shapes is what forced the casts this file used to need.
+            const latestMsg = threadMessages[threadMessages.length - 1];
+            const snippet =
+              latestMsg?.snippet || thread.snippet || "No snippet available";
             const isExpanded = expandedThreadId === thread.id;
 
             return (
               <div
-                key={thread.id || Math.random()}
+                key={thread.id || threadIdx}
                 className="rounded-xl border border-slate-800/80 bg-slate-950/60 p-3.5 transition-all hover:border-slate-700"
               >
                 <div
@@ -104,26 +118,39 @@ export function MailPanel({ tenant }: MailPanelProps) {
                 >
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-semibold text-slate-200">
-                      {latestMsg.from || "Gmail Thread"}
+                      {latestMsg?.from || "Gmail Thread"}
                     </span>
                     <span className="text-slate-500">
-                      {latestMsg.internalDate
+                      {latestMsg?.internalDate
                         ? new Date(Number(latestMsg.internalDate)).toLocaleDateString()
                         : ""}
                     </span>
                   </div>
                   <div className="mt-1 text-xs font-medium text-indigo-300">
-                    {latestMsg.subject || "No Subject"}
+                    {latestMsg?.subject || "No Subject"}
                   </div>
                   <p className="mt-1 line-clamp-1 text-xs text-slate-400">{snippet}</p>
                 </div>
 
                 {isExpanded && threadMessages.length > 0 && (
                   <div className="mt-3 space-y-2 border-t border-slate-800/80 pt-3">
-                    {threadMessages.map((msg: any, idx: number) => (
-                      <div key={msg.id || idx} className="rounded-lg bg-slate-900/90 p-2.5 text-xs text-slate-300">
+                    {threadMessages.map((msg, idx) => (
+                      <div
+                        key={msg.id || idx}
+                        className="rounded-lg bg-slate-900/90 p-2.5 text-xs text-slate-300"
+                      >
                         <div className="font-medium text-slate-200">{msg.from}</div>
                         <div className="mt-1 text-slate-400">{msg.snippet}</div>
+
+                        {msg.id && (
+                          <button
+                            type="button"
+                            onClick={() => setViewing(msg)}
+                            className="mt-2 rounded-md border border-slate-700 bg-slate-800/70 px-2 py-1 text-[10px] font-medium text-slate-300 hover:bg-slate-800 hover:text-white"
+                          >
+                            Show full mail
+                          </button>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -139,6 +166,13 @@ export function MailPanel({ tenant }: MailPanelProps) {
         onClose={() => setIsComposeOpen(false)}
         tenant={tenant}
         onSuccess={() => refetchThreads()}
+      />
+
+      <MessageModal
+        isOpen={viewing !== null}
+        onClose={() => setViewing(null)}
+        tenant={tenant}
+        message={viewing}
       />
     </div>
   );
