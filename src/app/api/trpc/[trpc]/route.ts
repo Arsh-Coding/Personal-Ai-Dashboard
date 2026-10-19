@@ -8,6 +8,7 @@ const handler = (req: NextRequest) =>
     endpoint: "/api/trpc",
     req,
     router: appRouter,
+    // No `resHeaders` needed: only the sign-in callback issues cookies now.
     createContext: () => createTRPCContext({ headers: req.headers }),
     onError:
       process.env.NODE_ENV === "development"

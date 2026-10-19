@@ -3,14 +3,11 @@
 import { useState } from "react";
 import { api } from "@/trpc/react";
 import { ModalPortal } from "./ModalPortal";
-import type { TenantId } from "@/lib/tenants";
 
 interface CreateEventModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
-  /** Account the event is created in. */
-  tenant: TenantId;
 }
 
 /** What the Meet flow produced, kept on screen so the link can be copied. */
@@ -24,7 +21,8 @@ type MeetResult = {
 const inputClass =
   "mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 p-2.5 text-sm text-slate-100 focus:border-purple-500 focus:outline-none";
 
-export function CreateEventModal({ isOpen, onClose, onSuccess, tenant }: CreateEventModalProps) {
+/** Creates in whichever account the session is on — the server decides, not this. */
+export function CreateEventModal({ isOpen, onClose, onSuccess }: CreateEventModalProps) {
   const [summary, setSummary] = useState("");
   const [description, setDescription] = useState("");
   const [date, setDate] = useState("");
@@ -103,7 +101,6 @@ export function CreateEventModal({ isOpen, onClose, onSuccess, tenant }: CreateE
 
     if (withMeet) {
       scheduleMeeting.mutate({
-        tenant,
         summary,
         description,
         startDateTime,
@@ -117,7 +114,7 @@ export function CreateEventModal({ isOpen, onClose, onSuccess, tenant }: CreateE
       return;
     }
 
-    createEvent.mutate({ tenant, summary, description, startDateTime, endDateTime });
+    createEvent.mutate({ summary, description, startDateTime, endDateTime });
   };
 
   if (result) {

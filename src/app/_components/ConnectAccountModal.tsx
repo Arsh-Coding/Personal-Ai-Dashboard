@@ -3,12 +3,16 @@
 import { api } from "@/trpc/react";
 import { ModalPortal } from "./ModalPortal";
 import { pluginMeta, type PluginId, type TenantConnection } from "@/lib/plugins";
-import { tenantMeta, type TenantId } from "@/lib/tenants";
 
 interface ConnectAccountModalProps {
   isOpen: boolean;
   onClose: () => void;
-  tenant: TenantId;
+  /**
+   * The signed-in address, for labelling only. Used to come from a hardcoded
+   * table keyed by tenant id; that table is gone, and the server decides which
+   * account gets authorized regardless of what is shown here.
+   */
+  email: string;
   /** Undefined while the status query is still in flight. */
   status?: TenantConnection;
   /** Message from a failed callback, surfaced instead of a bare redirect. */
@@ -18,11 +22,10 @@ interface ConnectAccountModalProps {
 export function ConnectAccountModal({
   isOpen,
   onClose,
-  tenant,
+  email,
   status,
   error,
 }: ConnectAccountModalProps) {
-  const account = tenantMeta(tenant);
   const connectedCount =
     (status?.plugins.length ?? 0) - (status?.pending.length ?? 0);
 
@@ -39,7 +42,8 @@ export function ConnectAccountModal({
     },
   });
 
-  const connect = (plugin: PluginId) => getConnectUrl.mutate({ tenant, plugin });
+  // No tenant sent: the server authorizes whichever account the session is on.
+  const connect = (plugin: PluginId) => getConnectUrl.mutate({ plugin });
 
   const nextPending = status?.pending[0];
 
@@ -54,23 +58,23 @@ export function ConnectAccountModal({
   return (
     <ModalPortal isOpen={isOpen} onClose={onClose} cardClassName="max-w-md">
       <h3 className="text-lg font-semibold text-slate-100">
-        {isReauth ? "Reconnect" : "Connect"} {account.label}
+        {isReauth ? "Reconnect" : "Connect"} Google
       </h3>
       <p className="mt-1 text-xs text-slate-400">
         {isReauth ? (
           <>
             Google expired this account&apos;s authorization, so calls fail with{" "}
             <code className="text-slate-300">invalid_grant</code>. A refresh
-            token can&apos;t be renewed — sign in again as{" "}
-            <span className="font-medium text-slate-200">{account.email}</span>{" "}
-            to issue a new one.
+            token can&apos;t be renewed — authorize again as{" "}
+            <span className="font-medium text-slate-200">{email}</span> to issue
+            a new one.
           </>
         ) : (
           <>
-            This account has no Google authorization yet, so its calendar and
-            mail come back empty. Sign in as{" "}
-            <span className="font-medium text-slate-200">{account.email}</span>{" "}
-            to connect it.
+            Corsair has no permission to read your mail or calendar yet, so both
+            come back empty. Grant access as{" "}
+            <span className="font-medium text-slate-200">{email}</span> to
+            connect them.
           </>
         )}
       </p>

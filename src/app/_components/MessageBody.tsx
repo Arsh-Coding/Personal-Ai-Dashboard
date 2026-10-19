@@ -2,10 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/trpc/react";
-import type { TenantId } from "@/lib/tenants";
 
 interface MessageBodyProps {
-  tenant: TenantId;
   messageId: string;
   /**
    * Tailwind max-height for the frame. The measured content height is applied
@@ -36,7 +34,6 @@ function formatSize(bytes: number): string {
  * report what was withheld.
  */
 export function MessageBody({
-  tenant,
   messageId,
   maxHeightClass = "max-h-[70vh]",
 }: MessageBodyProps) {
@@ -49,9 +46,9 @@ export function MessageBody({
   // Refetched when `showImages` flips, because whether images are stripped is
   // decided server-side — the client never holds a version with them intact.
   useEffect(() => {
-    loadBody.mutate({ tenant, messageId, showImages });
+    loadBody.mutate({ messageId, showImages });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tenant, messageId, showImages]);
+  }, [messageId, showImages]);
 
   const result = loadBody.data;
   const document = result?.ok ? result.document : null;

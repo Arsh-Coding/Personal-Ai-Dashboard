@@ -2,12 +2,10 @@
 
 import { ModalPortal } from "./ModalPortal";
 import { MessageBody } from "./MessageBody";
-import type { TenantId } from "@/lib/tenants";
 
 interface MessageModalProps {
   isOpen: boolean;
   onClose: () => void;
-  tenant: TenantId;
   /** Null between closing and unmount, so the header has nothing to render. */
   message: {
     id: string;
@@ -40,12 +38,7 @@ function formatWhen(internalDate?: string): string {
  * sandboxed frame, so sender and subject stay legible and consistent no matter what
  * the message does to itself.
  */
-export function MessageModal({
-  isOpen,
-  onClose,
-  tenant,
-  message,
-}: MessageModalProps) {
+export function MessageModal({ isOpen, onClose, message }: MessageModalProps) {
   if (!message) return null;
 
   const when = formatWhen(message.internalDate);
@@ -84,7 +77,6 @@ export function MessageModal({
             rather than briefly showing the previous one's body. */}
         <MessageBody
           key={message.id}
-          tenant={tenant}
           messageId={message.id}
           maxHeightClass="max-h-[70vh]"
         />

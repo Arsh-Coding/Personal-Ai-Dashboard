@@ -5,14 +5,9 @@ import { api } from "@/trpc/react";
 import { ComposeMailModal } from "./ComposeMailModal";
 import { MessageModal } from "./MessageModal";
 import type { MailListMessage } from "@/server/api/routers/mail";
-import type { TenantId } from "@/lib/tenants";
 
-interface MailPanelProps {
-  /** Account whose mail is shown, and which outgoing mail is sent from. */
-  tenant: TenantId;
-}
-
-export function MailPanel({ tenant }: MailPanelProps) {
+/** Shows whichever account the session is on — the server decides, not this. */
+export function MailPanel() {
   const [isComposeOpen, setIsComposeOpen] = useState(false);
   const [expandedThreadId, setExpandedThreadId] = useState<string | null>(null);
   /**
@@ -22,9 +17,9 @@ export function MailPanel({ tenant }: MailPanelProps) {
   const [viewing, setViewing] = useState<MailListMessage | null>(null);
 
   const { data: threads, refetch: refetchThreads, isLoading } =
-    api.mail.getThreads.useQuery({ tenant });
+    api.mail.getThreads.useQuery();
   const { data: messages, refetch: refetchMessages } =
-    api.mail.getMessages.useQuery({ tenant });
+    api.mail.getMessages.useQuery();
 
   const refreshMail = api.mail.refreshMail.useMutation({
     onSuccess: (res) => {
@@ -72,7 +67,7 @@ export function MailPanel({ tenant }: MailPanelProps) {
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => refreshMail.mutate({ tenant })}
+            onClick={() => refreshMail.mutate()}
             disabled={refreshMail.isPending}
             className="rounded-lg border border-slate-800 bg-slate-900 px-3 py-1.5 text-xs font-medium text-slate-300 hover:bg-slate-800 disabled:opacity-50"
           >
@@ -164,14 +159,12 @@ export function MailPanel({ tenant }: MailPanelProps) {
       <ComposeMailModal
         isOpen={isComposeOpen}
         onClose={() => setIsComposeOpen(false)}
-        tenant={tenant}
         onSuccess={() => refetchThreads()}
       />
 
       <MessageModal
         isOpen={viewing !== null}
         onClose={() => setViewing(null)}
-        tenant={tenant}
         message={viewing}
       />
     </div>

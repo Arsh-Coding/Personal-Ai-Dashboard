@@ -3,17 +3,15 @@
 import { useState } from "react";
 import { api } from "@/trpc/react";
 import { ModalPortal } from "./ModalPortal";
-import type { TenantId } from "@/lib/tenants";
 
 interface ComposeMailModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
-  /** Account the message is sent from. */
-  tenant: TenantId;
 }
 
-export function ComposeMailModal({ isOpen, onClose, onSuccess, tenant }: ComposeMailModalProps) {
+/** Sends as whichever account the session is on — the server decides, not this. */
+export function ComposeMailModal({ isOpen, onClose, onSuccess }: ComposeMailModalProps) {
   const [to, setTo] = useState("");
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
@@ -36,12 +34,7 @@ export function ComposeMailModal({ isOpen, onClose, onSuccess, tenant }: Compose
     e.preventDefault();
     if (!to || !subject || !body) return;
 
-    sendMessage.mutate({
-      tenant,
-      to,
-      subject,
-      body,
-    });
+    sendMessage.mutate({ to, subject, body });
   };
 
   return (
