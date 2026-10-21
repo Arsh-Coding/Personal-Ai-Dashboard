@@ -79,6 +79,21 @@ export function corsairFor(tenant: TenantId) {
 }
 
 /**
+ * Drop a tenant's cached client so the next `corsairFor` reads keys afresh.
+ *
+ * Each cached client's key managers keep the account row they first read, and
+ * only reset it when they themselves write. Tokens stored anywhere else leave
+ * that copy stale: the OAuth callback writes through its own client, and on a
+ * serverless host another instance may have done the writing. After a reconnect
+ * the stale copy still held the revoked refresh token, so the dashboard kept
+ * reporting "Authorization expired" and calls kept failing with `invalid_grant`
+ * even though fresh tokens were already saved.
+ */
+export function forgetTenantClient(tenant: TenantId): void {
+    tenantClients.delete(tenant);
+}
+
+/**
  * Where Google sends the user back after consent.
  *
  * Read by both sides of the flow on purpose: OAuth requires the `redirect_uri`

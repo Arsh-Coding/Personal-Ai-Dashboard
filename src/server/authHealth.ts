@@ -1,7 +1,7 @@
 import { googlecalendar } from "@corsair-dev/googlecalendar";
 import { gmail } from "@corsair-dev/gmail";
 import { googlemeet } from "@corsair-dev/googlemeet";
-import { corsairFor } from "@/server/corsair";
+import { corsairFor, forgetTenantClient } from "@/server/corsair";
 import type { ConnectionState, PluginId } from "@/lib/plugins";
 import type { TenantId } from "@/lib/tenants";
 
@@ -70,6 +70,24 @@ function isInvalidGrant(status: number, body: string): boolean {
  * so the round trip is borrowed rather than wasted.
  */
 export async function probeConnection(
+  tenant: TenantId,
+  plugin: PluginId,
+): Promise<ConnectionState> {
+  const state = await probeOnce(tenant, plugin);
+  if (state !== "needs_reauth") return state;
+
+  /**
+   * `needs_reauth` sends the user back through consent, so confirm it against
+   * keys read fresh from the database before saying so. The cached client may
+   * predate a reconnect, done through the OAuth callback or on another server
+   * instance, and still hold the refresh token that reconnect replaced.
+   * Dropping it also means this instance's later API calls use the new grant.
+   */
+  forgetTenantClient(tenant);
+  return probeOnce(tenant, plugin);
+}
+
+async function probeOnce(
   tenant: TenantId,
   plugin: PluginId,
 ): Promise<ConnectionState> {

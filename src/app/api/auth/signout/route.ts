@@ -12,7 +12,13 @@ import { clearedSessionCookie } from "@/server/session";
  * untouched, so signing back in picks up where they left off without re-consenting.
  */
 export async function POST(request: NextRequest) {
-  const response = NextResponse.redirect(new URL("/", request.nextUrl.origin));
+  // 303, not the default 307. A 307 tells the browser to repeat the same method,
+  // so the sign-out form's POST was replayed against `/`, a page that only answers
+  // GET, and the user landed on "HTTP ERROR 405". 303 means "now GET this URL".
+  const response = NextResponse.redirect(
+    new URL("/", request.nextUrl.origin),
+    303,
+  );
   const cleared = clearedSessionCookie();
   response.cookies.set(cleared.name, cleared.value, cleared.options);
   return response;

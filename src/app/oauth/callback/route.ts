@@ -1,7 +1,11 @@
 import { redirect } from "next/navigation";
 import { type NextRequest } from "next/server";
 import { processOAuthCallback } from "corsair/oauth";
-import { corsair, oauthRedirectUri } from "@/server/corsair";
+import {
+  corsair,
+  forgetTenantClient,
+  oauthRedirectUri,
+} from "@/server/corsair";
 
 /**
  * Where Google lands after consent — this path is what `OAUTH_REDIRECT_URI`
@@ -36,11 +40,14 @@ export async function GET(request: NextRequest) {
     target = failed("Missing code or state");
   } else {
     try {
-      await processOAuthCallback(corsair, {
+      const { tenantId } = await processOAuthCallback(corsair, {
         code,
         state,
         redirectUri: oauthRedirectUri(),
       });
+      // The new tokens went in through Corsair's own client, so this instance's
+      // cached one still holds the old grant. Drop it before the dashboard reloads.
+      forgetTenantClient(tenantId);
       target = "/";
     } catch (e: any) {
       console.error("Corsair OAuth callback failed:", e);

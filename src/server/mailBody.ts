@@ -1,29 +1,40 @@
-import type { DOMPurify as Purifier } from "isomorphic-dompurify";
+import type { DOMPurify as Purifier } from "dompurify";
 
 /**
- * The sanitiser is loaded on first use, not imported at the top of the file.
+ * DOMPurify on a jsdom window, built on first use.
  *
- * `isomorphic-dompurify` brings in jsdom, and the bundler loads jsdom as an
- * external module when the importing file is evaluated. This file is reachable
- * from the tRPC root, so with a static import any failure to load jsdom threw
- * while the whole `/api/trpc` route was being evaluated. jsdom is CommonJS that
- * `require()`s ESM-only packages such as parse5, and not every runtime allows
- * that. The result was a 500 on every procedure, `session.me` included, so the
- * app looked signed out. Loading it here confines a failure to the one procedure
- * that renders mail, where its message is returned to the caller.
+ * jsdom is pinned to exactly 26.1.0 in package.json, and that pin is load-bearing.
+ * jsdom is CommonJS, and from 27 on it `require()`s ESM-only packages (parse5 8,
+ * `@exodus/bytes`, and others). Vercel's function runtime refuses `require()` of
+ * ESM, so opening any HTML mail failed with `ERR_REQUIRE_ESM`, even though the
+ * same code ran fine locally on Node 24. 26.1.0 is the last release whose whole
+ * dependency chain is CommonJS. This is also why `isomorphic-dompurify` is gone:
+ * it is only a thin wrapper doing the two lines below, and it pulled in jsdom 30
+ * with no way to choose the version.
+ *
+ * Loaded lazily rather than imported at the top because the bundler loads jsdom
+ * as an external module when the importing file is evaluated. This file is
+ * reachable from the tRPC root, so with a static import a jsdom load failure
+ * threw while the whole `/api/trpc` route was evaluated. Every procedure,
+ * `session.me` included, returned 500 and the app looked signed out. Here a
+ * failure stays inside the one procedure that renders mail, which returns its
+ * message to the caller.
  *
  * A failed load is not cached, so the next call tries again.
  */
 let purifierPromise: Promise<Purifier> | null = null;
 
 function loadPurifier(): Promise<Purifier> {
-  purifierPromise ??= import("isomorphic-dompurify").then(
-    (mod) => mod.default,
-    (err: unknown) => {
-      purifierPromise = null;
-      throw err;
-    },
-  );
+  purifierPromise ??= (async () => {
+    const [{ default: createDOMPurify }, { JSDOM }] = await Promise.all([
+      import("dompurify"),
+      import("jsdom"),
+    ]);
+    return createDOMPurify(new JSDOM("").window);
+  })().catch((err: unknown) => {
+    purifierPromise = null;
+    throw err;
+  });
   return purifierPromise;
 }
 
