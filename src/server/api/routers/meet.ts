@@ -2,6 +2,7 @@ import { z } from "zod";
 import { createTRPCRouter, tenantProcedure } from "@/server/api/trpc";
 import { corsairFor } from "@/server/corsair";
 import { readEntities } from "@/server/entityReads";
+import { encodeHeaderValue } from "@/server/mime";
 
 /**
  * A Meet space is created standalone and its link is carried on the calendar
@@ -191,7 +192,10 @@ export const meetRouter = createTRPCRouter({
       let emailError: string | undefined;
       try {
         const raw = encodeMessage(
-          [`To: ${input.attendeeEmail}`, `Subject: Invitation: ${input.summary} — ${when}`],
+          [
+            `To: ${input.attendeeEmail}`,
+            `Subject: ${encodeHeaderValue(`Invitation: ${input.summary} — ${when}`)}`,
+          ],
           inviteEmail({
             summary: input.summary,
             description: input.description,

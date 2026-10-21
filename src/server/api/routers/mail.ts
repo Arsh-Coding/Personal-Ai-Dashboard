@@ -9,6 +9,7 @@ import {
   resolveAccountId,
 } from "@/server/entityReads";
 import { sql } from "@/server/pg";
+import { encodeHeaderValue } from "@/server/mime";
 
 /**
  * Messages hydrated per `refreshMail` call, and how many requests run at once.
@@ -441,7 +442,7 @@ export const mailRouter = createTRPCRouter({
           `To: ${input.to}`,
           "Content-Type: text/html; charset=utf-8",
           "MIME-Version: 1.0",
-          `Subject: ${input.subject}`,
+          `Subject: ${encodeHeaderValue(input.subject)}`,
           "",
           input.body,
         ].join("\r\n");

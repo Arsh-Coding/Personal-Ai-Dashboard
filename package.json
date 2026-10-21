@@ -13,6 +13,8 @@
     "db:recover-sync": "tsx scripts/recover-sync.ts"
   },
   "dependencies": {
+    "@ai-sdk/google": "4.0.102",
+    "@ai-sdk/react": "4.0.152",
     "@corsair-dev/gmail": "^0.1.4",
     "@corsair-dev/googlecalendar": "^0.1.5",
     "@corsair-dev/googlemeet": "^0.1.0",
@@ -20,6 +22,7 @@
     "@trpc/client": "^11.18.0",
     "@trpc/react-query": "^11.18.0",
     "@trpc/server": "^11.18.0",
+    "ai": "7.0.148",
     "corsair": "^0.1.109",
     "dompurify": "3.4.17",
     "dotenv": "^17.4.2",

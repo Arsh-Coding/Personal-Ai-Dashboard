@@ -1,5 +1,7 @@
 "use client";
 
+import { SITE } from "@/lib/site";
+
 interface SignInScreenProps {
   /** Message from a failed sign-in, passed back as `?auth_error=`. */
   error?: string | null;
@@ -14,13 +16,14 @@ interface SignInScreenProps {
  */
 export function SignInScreen({ error }: SignInScreenProps) {
   return (
-    <div className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center px-6">
+    <div className="mx-auto flex min-h-[85vh] max-w-md flex-col items-center justify-center px-6">
       <div className="w-full rounded-2xl border border-slate-800 bg-slate-900/50 p-8 backdrop-blur-xl">
         <h1 className="bg-linear-to-r from-purple-400 via-indigo-300 to-pink-400 bg-clip-text text-center text-2xl font-extrabold tracking-tight text-transparent">
-          Corsair Workspace
+          {SITE.name}
         </h1>
         <p className="mt-2 text-center text-xs text-slate-400">
-          Your Gmail, Calendar and Meet in one place.
+          Your Gmail, Calendar and Meet in one place, with an assistant that drafts emails
+          and schedules meetings for you to confirm.
         </p>
 
         {error && (

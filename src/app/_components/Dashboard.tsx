@@ -9,6 +9,8 @@ import { ConnectAccountModal } from "./ConnectAccountModal";
 import { MailPanel } from "./MailPanel";
 import { UserMenu } from "./UserMenu";
 import { SignInScreen } from "./SignInScreen";
+import { AssistantPanel } from "./AssistantPanel";
+import { firstName } from "@/lib/names";
 
 export function Dashboard() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -107,7 +109,7 @@ export function Dashboard() {
         <div>
           <div className="flex items-center gap-3">
             <h1 className="bg-linear-to-r from-purple-400 via-indigo-300 to-pink-400 bg-clip-text text-3xl font-extrabold tracking-tight text-transparent">
-              Arsh Workspace
+              {firstName(user.name, user.email)} Workspace
             </h1>
             <span className="rounded-full border border-purple-500/30 bg-purple-500/10 px-3 py-1 text-xs font-semibold text-purple-300">
               Live Sync
@@ -226,6 +228,10 @@ export function Dashboard() {
         status={status}
         error={authError}
       />
+
+      {/* Keyed by account, like the mail panel, so signing in as someone else
+          never shows the previous person's conversation. */}
+      <AssistantPanel key={user.tenant} />
     </div>
   );
 }
