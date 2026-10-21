@@ -7,53 +7,57 @@ import { EventCard } from "./EventCard";
 import { CreateEventModal } from "./CreateEventModal";
 import { ConnectAccountModal } from "./ConnectAccountModal";
 import { MailPanel } from "./MailPanel";
-import { AccountSwitcher } from "./AccountSwitcher";
-import { useTenant } from "./useTenant";
-import { type TenantId } from "@/lib/tenants";
+import { UserMenu } from "./UserMenu";
+import { SignInScreen } from "./SignInScreen";
 
 export function Dashboard() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const { tenant, selectTenant } = useTenant();
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // Set only when /oauth/callback couldn't complete the exchange. On success it
-  // redirects to a bare `/`, because a fresh connection status is all the
-  // dashboard needs to react.
+  /** Who is signed in. `null` once loaded means nobody. */
+  const session = api.session.me.useQuery();
+  const signedIn = !!session.data;
+
+  // `corsair_auth=error` comes back from Corsair's data-access callback;
+  // `auth_error` from the sign-in callback. Different flows, same surface.
   const authError =
     searchParams.get("corsair_auth") === "error"
       ? (searchParams.get("message") ?? "Authorization failed")
       : null;
+  const signInError = searchParams.get("auth_error");
 
-  // Per account, so dismissing the prompt for one doesn't suppress it for the
-  // other. Cleared on reload — the AccountSwitcher keeps a way back in.
-  const [dismissed, setDismissed] = useState<Partial<Record<TenantId, boolean>>>(
-    {},
-  );
+  // Cleared on reload — the UserMenu keeps a way back in.
+  const [dismissed, setDismissed] = useState(false);
 
-  const { data: statuses } = api.auth.listStatuses.useQuery();
-  const status = statuses?.[tenant];
+  // Only the signed-in user's own status; there is no longer any way to ask
+  // about another account.
+  const { data: status } = api.auth.myStatus.useQuery(undefined, {
+    enabled: signedIn,
+  });
 
   /**
-   * Derived rather than stored, so the prompt tracks reality on its own:
-   * switching to an unauthorized account opens it, and it closes the moment the
-   * last plugin reports `connected` instead of needing to be told to. Stays
-   * shut while `status` is undefined so it can't flash during the first load.
+   * Derived rather than stored, so the prompt tracks reality on its own: it
+   * closes the moment the last plugin reports `connected` instead of needing to
+   * be told to. Stays shut while `status` is undefined so it can't flash during
+   * the first load.
    */
-  const isConnectOpen = status?.connected === false && !dismissed[tenant];
+  const isConnectOpen = status?.connected === false && !dismissed;
 
   const closeConnect = () => {
-    setDismissed((d) => ({ ...d, [tenant]: true }));
+    setDismissed(true);
     // Drop `?corsair_auth=error` so a reload doesn't replay a handled failure.
     if (authError) router.replace("/");
   };
 
-  // `tenant` is part of every query key, so switching accounts swaps the cached
-  // data instead of showing the previous account's events while refetching.
+  /**
+   * No tenant in the query key or the request — the server reads it from the
+   * session cookie, so these can only ever return the signed-in user's data.
+   */
   const { data: events, refetch: refetchEvents, isLoading: isEventsLoading } =
-    api.calendar.getEvents.useQuery({ tenant });
+    api.calendar.getEvents.useQuery(undefined, { enabled: signedIn });
   const { data: stats, refetch: refetchStats } =
-    api.calendar.getTodayStats.useQuery({ tenant });
+    api.calendar.getTodayStats.useQuery(undefined, { enabled: signedIn });
 
   const refreshEvents = api.calendar.refreshEvents.useMutation({
     onSuccess: (res) => {
@@ -64,8 +68,29 @@ export function Dashboard() {
   });
 
   const handleRefreshAll = () => {
-    refreshEvents.mutate({ tenant });
+    refreshEvents.mutate();
   };
+
+  /**
+   * Nothing renders until the server says who this is.
+   *
+   * Every hook above runs unconditionally and is gated on `signedIn`, so these
+   * early returns are safe. The data queries would fail with UNAUTHORIZED anyway —
+   * this just avoids firing them to find that out.
+   */
+  if (session.isLoading) {
+    return (
+      <div className="mx-auto max-w-7xl px-4 py-16 text-center text-xs text-slate-500 sm:px-6 lg:px-8">
+        Loading...
+      </div>
+    );
+  }
+
+  if (!session.data) {
+    return <SignInScreen error={signInError} />;
+  }
+
+  const user = session.data;
 
   const nextMeetingSummary = stats?.nextMeeting?.summary || "No upcoming meetings";
   const nextMeetingTime = stats?.nextMeeting?.start?.dateTime
@@ -94,13 +119,13 @@ export function Dashboard() {
         </div>
 
         <div className="flex items-center gap-3">
-          <AccountSwitcher
-            value={tenant}
-            onChange={selectTenant}
-            disabled={refreshEvents.isPending}
-            statuses={statuses}
+          <UserMenu
+            email={user.email}
+            name={user.name}
+            image={user.image}
+            status={status}
             // Undoing the dismissal is enough — `isConnectOpen` follows from it.
-            onConnect={() => setDismissed((d) => ({ ...d, [tenant]: false }))}
+            onConnect={() => setDismissed(false)}
           />
           <button
             onClick={handleRefreshAll}
@@ -179,14 +204,15 @@ export function Dashboard() {
 
         {/* Mail Section */}
         <section className="lg:col-span-5">
-          <MailPanel tenant={tenant} />
+          {/* Keyed by account so a sign-in as someone else resets which thread
+              is expanded rather than carrying a reading position across. */}
+          <MailPanel key={user.tenant} />
         </section>
       </div>
 
       <CreateEventModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
-        tenant={tenant}
         onSuccess={() => {
           refetchEvents();
           refetchStats();
@@ -196,7 +222,7 @@ export function Dashboard() {
       <ConnectAccountModal
         isOpen={isConnectOpen}
         onClose={closeConnect}
-        tenant={tenant}
+        email={user.email}
         status={status}
         error={authError}
       />

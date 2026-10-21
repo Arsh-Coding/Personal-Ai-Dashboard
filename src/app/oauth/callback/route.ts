@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { type NextRequest } from "next/server";
 import { processOAuthCallback } from "corsair/oauth";
-import { corsair, OAUTH_REDIRECT_URI } from "@/server/corsair";
+import { corsair, oauthRedirectUri } from "@/server/corsair";
 
 /**
  * Where Google lands after consent — this path is what `OAUTH_REDIRECT_URI`
@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
       await processOAuthCallback(corsair, {
         code,
         state,
-        redirectUri: OAUTH_REDIRECT_URI,
+        redirectUri: oauthRedirectUri(),
       });
       target = "/";
     } catch (e: any) {

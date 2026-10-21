@@ -6,7 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "db:init": "tsx scripts/init-corsair-schema.ts",
+    "db:push": "drizzle-kit push",
+    "db:seed-users": "tsx scripts/seed-legacy-users.ts",
+    "db:recover-sync": "tsx scripts/recover-sync.ts"
   },
   "dependencies": {
     "@corsair-dev/gmail": "^0.1.4",
@@ -16,10 +20,10 @@
     "@trpc/client": "^11.18.0",
     "@trpc/react-query": "^11.18.0",
     "@trpc/server": "^11.18.0",
-    "better-sqlite3": "^13.0.1",
     "corsair": "^0.1.109",
     "dotenv": "^17.4.2",
     "drizzle-orm": "^0.45.2",
+    "isomorphic-dompurify": "3.22.0",
     "next": "16.2.12",
     "postgres": "^3.4.9",
     "react": "19.2.4",
@@ -30,7 +34,6 @@
   "devDependencies": {
     "@corsair-dev/cli": "^0.1.19",
     "@tailwindcss/postcss": "^4",
-    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
@@ -38,6 +41,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.12",
     "tailwindcss": "^4",
+    "tsx": "4.20.3",
     "typescript": "^5"
   }
 }

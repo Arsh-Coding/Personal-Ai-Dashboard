@@ -1,6 +1,7 @@
 import { z } from "zod";
-import { createTRPCRouter, publicProcedure } from "@/server/api/trpc";
-import { corsairFor, tenantInput, unwrapEntities } from "@/server/corsair";
+import { createTRPCRouter, tenantProcedure } from "@/server/api/trpc";
+import { corsairFor } from "@/server/corsair";
+import { readEntities } from "@/server/entityReads";
 
 /**
  * A Meet space is created standalone and its link is carried on the calendar
@@ -91,9 +92,13 @@ function inviteEmail(opts: {
 
 export const meetRouter = createTRPCRouter({
   /** Meet spaces this account has created, newest rows last. */
-  getSpaces: publicProcedure.input(tenantInput).query(async ({ input }) => {
+  getSpaces: tenantProcedure.query(async ({ ctx }) => {
     try {
-      return unwrapEntities(await corsairFor(input.tenant).googlemeet.db.spaces.search({}));
+      return await readEntities({
+        tenant: ctx.tenantId,
+        plugin: "googlemeet",
+        entityType: "spaces",
+      });
     } catch (e) {
       console.error("Error fetching Meet spaces from corsair db:", e);
       return [];
@@ -111,9 +116,9 @@ export const meetRouter = createTRPCRouter({
    * meeting on both calendars, so it downgrades to a warning the UI can show
    * rather than throwing away the work.
    */
-  scheduleMeeting: publicProcedure
+  scheduleMeeting: tenantProcedure
     .input(
-      tenantInput.extend({
+      z.object({
         summary: z.string().min(1),
         description: z.string().optional(),
         startDateTime: z.string(),
@@ -125,8 +130,8 @@ export const meetRouter = createTRPCRouter({
         openAccess: z.boolean().default(false),
       }),
     )
-    .mutation(async ({ input }) => {
-      const client = corsairFor(input.tenant);
+    .mutation(async ({ ctx, input }) => {
+      const client = corsairFor(ctx.tenantId);
       const failed = (error: string) => ({ success: false as const, error });
 
       // 1. The Meet space. `TRUSTED` is Google's own default: signed-in guests
