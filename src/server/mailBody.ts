@@ -1,4 +1,31 @@
-import DOMPurify from "isomorphic-dompurify";
+import type { DOMPurify as Purifier } from "isomorphic-dompurify";
+
+/**
+ * The sanitiser is loaded on first use, not imported at the top of the file.
+ *
+ * `isomorphic-dompurify` brings in jsdom, and the bundler loads jsdom as an
+ * external module when the importing file is evaluated. This file is reachable
+ * from the tRPC root, so with a static import any failure to load jsdom threw
+ * while the whole `/api/trpc` route was being evaluated. jsdom is CommonJS that
+ * `require()`s ESM-only packages such as parse5, and not every runtime allows
+ * that. The result was a 500 on every procedure, `session.me` included, so the
+ * app looked signed out. Loading it here confines a failure to the one procedure
+ * that renders mail, where its message is returned to the caller.
+ *
+ * A failed load is not cached, so the next call tries again.
+ */
+let purifierPromise: Promise<Purifier> | null = null;
+
+function loadPurifier(): Promise<Purifier> {
+  purifierPromise ??= import("isomorphic-dompurify").then(
+    (mod) => mod.default,
+    (err: unknown) => {
+      purifierPromise = null;
+      throw err;
+    },
+  );
+  return purifierPromise;
+}
 
 /**
  * Turns a stored Gmail `payload` into something safe to drop into an iframe.
@@ -158,6 +185,7 @@ function escapeHtml(value: string): string {
  * `img-src` is what actually stops that request.
  */
 function sanitize(
+  DOMPurify: Purifier,
   html: string,
   allowImages: boolean,
 ): { html: string; blockedImages: number; inlineImages: number } {
@@ -291,10 +319,10 @@ function wrapDocument(inner: string, allowImages: boolean): string {
  * message on disk, `text/html` is reachable in all but two, and those two are
  * `text/plain`.
  */
-export function extractMailBody(
+export async function extractMailBody(
   payload: GmailPart | undefined,
   options: { allowImages?: boolean } = {},
-): MailBody | null {
+): Promise<MailBody | null> {
   const allowImages = options.allowImages ?? false;
   const attachments = collectAttachments(payload);
 
@@ -308,7 +336,14 @@ export function extractMailBody(
   const bounded = truncated ? decoded.slice(0, MAX_BODY_CHARS) : decoded;
 
   if (htmlPart) {
-    const { html, blockedImages, inlineImages } = sanitize(bounded, allowImages);
+    // Awaited before `sanitize` so its add-hook / sanitise / remove-hook block
+    // stays synchronous. Plain-text messages never reach this and never load jsdom.
+    const DOMPurify = await loadPurifier();
+    const { html, blockedImages, inlineImages } = sanitize(
+      DOMPurify,
+      bounded,
+      allowImages,
+    );
     return {
       kind: "html",
       document: wrapDocument(html, allowImages),

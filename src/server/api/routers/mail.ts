@@ -196,7 +196,7 @@ export const mailRouter = createTRPCRouter({
           };
         }
 
-        const body = extractMailBody(message.payload as GmailPart, {
+        const body = await extractMailBody(message.payload as GmailPart, {
           allowImages: input.showImages,
         });
 
