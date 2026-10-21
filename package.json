@@ -9,7 +9,6 @@
     "lint": "eslint",
     "db:init": "tsx scripts/init-corsair-schema.ts",
     "db:push": "drizzle-kit push",
-    "db:migrate-from-sqlite": "tsx scripts/migrate-sqlite-to-postgres.ts",
     "db:seed-users": "tsx scripts/seed-legacy-users.ts",
     "db:recover-sync": "tsx scripts/recover-sync.ts"
   },
@@ -35,11 +34,9 @@
   "devDependencies": {
     "@corsair-dev/cli": "^0.1.19",
     "@tailwindcss/postcss": "^4",
-    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "better-sqlite3": "^13.0.1",
     "drizzle-kit": "^0.31.10",
     "eslint": "^9",
     "eslint-config-next": "16.2.12",

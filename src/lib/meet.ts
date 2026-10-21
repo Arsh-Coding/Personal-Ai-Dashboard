@@ -2,8 +2,8 @@
  * Reading a Meet link back off a calendar event.
  *
  * Lives here rather than beside the meet router because `EventCard` needs it
- * too, and that router pulls in `@/server/corsair` — and therefore
- * better-sqlite3 — which cannot be bundled into a client component.
+ * too, and that router pulls in `@/server/corsair` — and therefore the
+ * Postgres driver — which cannot be bundled into a client component.
  *
  * Safe to import from client components: no server-only dependencies.
  */

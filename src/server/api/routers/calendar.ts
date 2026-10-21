@@ -50,9 +50,10 @@ export const calendarRouter = createTRPCRouter({
   getEvents: tenantProcedure.query(async ({ ctx }) => {
     try {
       const events = await readCalendarEvents(ctx.tenantId);
-      // The UI renders these as an "Upcoming Agenda", so order chronologically
-      // rather than by whatever order the entities table returns.
-      return events.sort((a, b) => eventStart(a) - eventStart(b));
+      // The "Upcoming Agenda" lists the latest-scheduled meeting first, so order
+      // by start time descending rather than by whatever order the entities
+      // table returns.
+      return events.sort((a, b) => eventStart(b) - eventStart(a));
     } catch (e) {
       console.error("Error fetching events from corsair db:", e);
       return [];
