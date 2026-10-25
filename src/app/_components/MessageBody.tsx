@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/trpc/react";
+import { Skeleton, Spinner } from "./primitives";
+import { AlertCircleIcon, ImageIcon, InfoIcon, PaperclipIcon, ShieldIcon } from "./icons";
 
 interface MessageBodyProps {
   messageId: string;
@@ -84,8 +86,12 @@ export function MessageBody({
 
   if (loadBody.isPending && !result) {
     return (
-      <div className="mt-2 rounded-lg border border-slate-800 bg-slate-950/80 p-4 text-center text-[11px] text-slate-500">
-        Loading message...
+      <div aria-busy="true" aria-label="Loading message" className="mt-2 space-y-3 rounded-xl border border-line bg-surface-2/50 p-5">
+        <Skeleton className="h-4 w-2/3" />
+        <Skeleton className="h-3 w-full" />
+        <Skeleton className="h-3 w-11/12" />
+        <Skeleton className="h-3 w-4/5" />
+        <Skeleton className="mt-5 h-32 w-full rounded-lg" />
       </div>
     );
   }
@@ -94,43 +100,52 @@ export function MessageBody({
 
   if (!result.ok) {
     return (
-      <div className="mt-2 rounded-lg border border-red-900/60 bg-red-950/30 p-3 text-[11px] text-red-300">
+      <div role="alert" className="alert alert-danger mt-2">
+        <AlertCircleIcon className="mt-px size-4" />
         {result.error}
       </div>
     );
   }
 
   return (
-    <div className="mt-2 space-y-2">
+    <div className="mt-2 animate-fade-in space-y-2.5">
       {result.blockedImages > 0 && (
-        <div className="flex items-center justify-between gap-3 rounded-lg border border-amber-900/50 bg-amber-950/30 px-3 py-2">
-          <span className="text-[11px] text-amber-300">
-            {result.blockedImages} remote image
-            {result.blockedImages === 1 ? "" : "s"} blocked — loading them tells the
-            sender you opened this.
+        <div className="alert alert-warning items-center justify-between">
+          <span className="flex items-start gap-2.5">
+            <ShieldIcon className="mt-px size-4" />
+            <span>
+              {result.blockedImages} remote image
+              {result.blockedImages === 1 ? "" : "s"} blocked — loading them tells the
+              sender you opened this.
+            </span>
           </span>
           <button
             type="button"
             onClick={() => setShowImages(true)}
             disabled={loadBody.isPending}
-            className="shrink-0 rounded-md border border-amber-700/60 bg-amber-900/40 px-2 py-1 text-[10px] font-medium text-amber-200 hover:bg-amber-900/70 disabled:opacity-50"
+            className="btn btn-sm shrink-0 border border-amber-500/40 bg-amber-500/15 text-amber-800 hover:bg-amber-500/25 dark:text-amber-100"
           >
+            {loadBody.isPending ? <Spinner className="size-3" /> : <ImageIcon className="size-3.5" />}
             {loadBody.isPending ? "Loading..." : "Display images"}
           </button>
         </div>
       )}
 
       {result.inlineImages > 0 && (
-        <div className="rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2 text-[11px] text-slate-400">
-          {result.inlineImages} embedded image
-          {result.inlineImages === 1 ? "" : "s"} can&apos;t be shown — the sender
-          attached {result.inlineImages === 1 ? "it" : "them"} to the message rather
-          than linking, and downloading attachments isn&apos;t supported yet.
+        <div className="alert alert-info">
+          <InfoIcon className="mt-px size-4" />
+          <span>
+            {result.inlineImages} embedded image
+            {result.inlineImages === 1 ? "" : "s"} can&apos;t be shown — the sender
+            attached {result.inlineImages === 1 ? "it" : "them"} to the message rather
+            than linking, and downloading attachments isn&apos;t supported yet.
+          </span>
         </div>
       )}
 
       {result.truncated && (
-        <div className="rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2 text-[11px] text-slate-400">
+        <div className="alert alert-info">
+          <InfoIcon className="mt-px size-4" />
           This message was too large to show in full and has been truncated.
         </div>
       )}
@@ -155,7 +170,7 @@ export function MessageBody({
         sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox"
         referrerPolicy="no-referrer"
         style={{ height }}
-        className={`w-full rounded-lg border border-slate-800 bg-white ${maxHeightClass}`}
+        className={`w-full rounded-xl border border-line bg-white ${maxHeightClass}`}
       />
 
       {result.attachments.length > 0 && (
@@ -164,13 +179,11 @@ export function MessageBody({
             <span
               key={`${att.filename}-${idx}`}
               title={`${att.filename} (${att.mimeType})`}
-              className="flex max-w-[220px] items-center gap-1.5 rounded-md border border-slate-800 bg-slate-900/80 px-2 py-1 text-[10px] text-slate-400"
+              className="flex max-w-[240px] items-center gap-1.5 rounded-lg border border-line bg-surface-2 px-2.5 py-1.5 text-[11px] text-fg-subtle"
             >
-              <span aria-hidden>📎</span>
-              <span className="truncate text-slate-300">{att.filename}</span>
-              {att.size > 0 && (
-                <span className="shrink-0 text-slate-500">{formatSize(att.size)}</span>
-              )}
+              <PaperclipIcon className="size-3.5" />
+              <span className="truncate font-medium text-fg-muted">{att.filename}</span>
+              {att.size > 0 && <span className="shrink-0">{formatSize(att.size)}</span>}
             </span>
           ))}
         </div>

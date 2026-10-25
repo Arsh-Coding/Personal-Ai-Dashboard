@@ -1,19 +1,25 @@
 "use client";
 
+import { useState } from "react";
 import { ModalPortal } from "./ModalPortal";
 import { MessageBody } from "./MessageBody";
+import { Avatar } from "./primitives";
+import { XIcon } from "./icons";
+import { parseSender } from "@/lib/format";
+
+type ViewedMessage = {
+  id: string;
+  from?: string;
+  to?: string;
+  subject?: string;
+  internalDate?: string;
+};
 
 interface MessageModalProps {
   isOpen: boolean;
   onClose: () => void;
-  /** Null between closing and unmount, so the header has nothing to render. */
-  message: {
-    id: string;
-    from?: string;
-    to?: string;
-    subject?: string;
-    internalDate?: string;
-  } | null;
+  /** Null once closed. The last message is kept on screen while the modal animates out. */
+  message: ViewedMessage | null;
 }
 
 function formatWhen(internalDate?: string): string {
@@ -39,47 +45,49 @@ function formatWhen(internalDate?: string): string {
  * the message does to itself.
  */
 export function MessageModal({ isOpen, onClose, message }: MessageModalProps) {
-  if (!message) return null;
+  // The parent clears `message` the moment it closes; holding the last one
+  // keeps the content in place for the exit animation instead of blanking it.
+  const [shown, setShown] = useState(message);
+  if (message && message !== shown) setShown(message);
 
-  const when = formatWhen(message.internalDate);
+  if (!shown) return null;
+
+  const when = formatWhen(shown.internalDate);
+  const sender = parseSender(shown.from);
 
   return (
     <ModalPortal isOpen={isOpen} onClose={onClose} cardClassName="max-w-4xl">
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0">
-          <h3 className="truncate text-base font-semibold text-slate-100">
-            {message.subject || "No Subject"}
+      <div className="flex items-start gap-4">
+        <Avatar name={sender.name} seed={sender.email} className="size-11 text-sm" />
+        <div className="min-w-0 flex-1">
+          <h3 className="text-base font-semibold tracking-tight text-fg sm:text-lg">
+            {shown.subject || "No Subject"}
           </h3>
-          <p className="mt-1 truncate text-xs text-slate-400">
-            {message.from || "Unknown sender"}
-          </p>
-          {message.to && (
-            <p className="mt-0.5 truncate text-[11px] text-slate-500">
-              to {message.to}
-            </p>
-          )}
+          <div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-xs">
+            <span className="font-medium text-fg">{sender.name}</span>
+            {sender.email && sender.email !== sender.name && (
+              <span className="truncate text-fg-subtle">&lt;{sender.email}&gt;</span>
+            )}
+          </div>
+          {shown.to && <p className="mt-0.5 truncate text-[11px] text-fg-subtle">to {shown.to}</p>}
         </div>
-        <div className="flex shrink-0 items-center gap-3">
-          {when && <span className="text-[11px] text-slate-500">{when}</span>}
+        <div className="flex shrink-0 items-center gap-2">
+          {when && <span className="hidden text-[11px] text-fg-subtle sm:inline">{when}</span>}
           <button
             type="button"
             onClick={onClose}
             aria-label="Close message"
-            className="rounded-lg border border-slate-800 bg-slate-900 px-2.5 py-1 text-xs text-slate-300 hover:bg-slate-800 hover:text-white"
+            className="btn btn-ghost btn-sm btn-icon -mt-1 -mr-2"
           >
-            Close
+            <XIcon />
           </button>
         </div>
       </div>
 
-      <div className="mt-4 border-t border-slate-800 pt-4">
+      <div className="mt-5 border-t border-line pt-4">
         {/* Keyed by id so opening a different message refetches from scratch
             rather than briefly showing the previous one's body. */}
-        <MessageBody
-          key={message.id}
-          messageId={message.id}
-          maxHeightClass="max-h-[70vh]"
-        />
+        <MessageBody key={shown.id} messageId={shown.id} maxHeightClass="max-h-[70vh]" />
       </div>
     </ModalPortal>
   );

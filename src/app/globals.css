@@ -1,26 +1,364 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/*
+ * Dark mode follows `data-theme` on <html>, not the media query, so an explicit
+ * choice in the theme menu wins over the OS. The inline script in `layout.tsx`
+ * sets the attribute before first paint; see `@/lib/theme`.
+ */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/*
+ * Semantic tokens. Components use these (`bg-surface`, `text-fg-muted`,
+ * `border-line`) rather than palette colors, so both themes are defined here
+ * and nowhere else. Palette colors with a `dark:` variant are reserved for
+ * status tones (success, warning, danger) and per-item accents.
+ */
+:root,
+[data-theme="light"] {
+  --ui-canvas: #f4f5fb;
+  --ui-surface: #ffffff;
+  --ui-surface-2: #f2f3f9;
+  --ui-surface-3: #e8eaf3;
+  --ui-line: #e3e5ef;
+  --ui-line-strong: #cdd1e0;
+  --ui-fg: #0e1124;
+  --ui-fg-muted: #4a5069;
+  --ui-fg-subtle: #7b8199;
+  --ui-brand: #6d4aff;
+  --ui-brand-2: #4f46e5;
+  --ui-brand-text: #5636e6;
+  --ui-overlay: rgb(14 17 36 / 0.32);
+  --ui-shadow-card: 0 1px 2px rgb(16 24 40 / 0.04), 0 6px 20px -8px rgb(16 24 40 / 0.08);
+  --ui-shadow-pop: 0 24px 48px -12px rgb(16 24 40 / 0.22), 0 2px 8px rgb(16 24 40 / 0.06);
+}
+
+[data-theme="dark"] {
+  --ui-canvas: #06070f;
+  --ui-surface: #0d0f1e;
+  --ui-surface-2: #131628;
+  --ui-surface-3: #1b1f37;
+  --ui-line: #1d2138;
+  --ui-line-strong: #2c3153;
+  --ui-fg: #eceefa;
+  --ui-fg-muted: #a2a8c3;
+  --ui-fg-subtle: #6b7191;
+  --ui-brand: #8366ff;
+  --ui-brand-2: #5a54f2;
+  --ui-brand-text: #ab99ff;
+  --ui-overlay: rgb(2 3 10 / 0.7);
+  --ui-shadow-card: inset 0 1px 0 rgb(255 255 255 / 0.03), 0 10px 30px -14px rgb(0 0 0 / 0.7);
+  --ui-shadow-pop: 0 30px 70px -14px rgb(0 0 0 / 0.8), inset 0 1px 0 rgb(255 255 255 / 0.04);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-canvas: var(--ui-canvas);
+  --color-surface: var(--ui-surface);
+  --color-surface-2: var(--ui-surface-2);
+  --color-surface-3: var(--ui-surface-3);
+  --color-line: var(--ui-line);
+  --color-line-strong: var(--ui-line-strong);
+  --color-fg: var(--ui-fg);
+  --color-fg-muted: var(--ui-fg-muted);
+  --color-fg-subtle: var(--ui-fg-subtle);
+  --color-brand: var(--ui-brand);
+  --color-brand-2: var(--ui-brand-2);
+  --color-brand-text: var(--ui-brand-text);
+
+  --shadow-card: var(--ui-shadow-card);
+  --shadow-pop: var(--ui-shadow-pop);
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/*
+ * Entrance animations use `backwards` fill, never `both` or `forwards`. A
+ * transform that outlives its animation makes the element a containing block
+ * for `position: fixed` descendants, the same trap `ModalPortal` documents for
+ * backdrop-blur. Exit animations are `forwards` because the element unmounts
+ * as soon as they end.
+ */
+@theme {
+  --animate-fade-up: fade-up 0.55s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  --animate-fade-in: fade-in 0.3s ease-out backwards;
+  --animate-fade-out: fade-out 0.16s ease-in forwards;
+  --animate-pop-in: pop-in 0.22s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  --animate-pop-out: pop-out 0.16s ease-in forwards;
+  --animate-panel-in: panel-in 0.32s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  --animate-panel-out: panel-out 0.18s ease-in forwards;
+  --animate-page-next: page-next 0.35s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  --animate-page-prev: page-prev 0.35s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  --animate-toast-in: toast-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  --animate-toast-out: toast-out 0.2s ease-in forwards;
+  --animate-float: float 18s ease-in-out infinite;
+  --animate-float-slow: float 26s ease-in-out infinite reverse;
+  --animate-ping-slow: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+  --animate-typing: typing 1.2s ease-in-out infinite;
+  --animate-gradient: gradient-x 6s ease infinite;
+  --animate-glow: glow 3s ease-in-out infinite;
+  --animate-grow-x: grow-x 1s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  --animate-grow-y: grow-y 0.7s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+@keyframes grow-x {
+  from {
+    transform: scaleX(0);
+  }
+}
+@keyframes grow-y {
+  from {
+    transform: scaleY(0);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes fade-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.97);
+  }
+}
+@keyframes pop-out {
+  to {
+    opacity: 0;
+    transform: translateY(4px) scale(0.98);
+  }
+}
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.96);
+  }
+}
+@keyframes panel-out {
+  to {
+    opacity: 0;
+    transform: translateY(12px) scale(0.97);
+  }
+}
+@keyframes page-next {
+  from {
+    opacity: 0;
+    transform: translateX(18px);
+  }
+}
+@keyframes page-prev {
+  from {
+    opacity: 0;
+    transform: translateX(-18px);
+  }
+}
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.96);
+  }
+}
+@keyframes toast-out {
+  to {
+    opacity: 0;
+    transform: translateX(-12px) scale(0.98);
+  }
+}
+@keyframes float {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  33% {
+    transform: translate3d(4%, 6%, 0) scale(1.06);
+  }
+  66% {
+    transform: translate3d(-5%, 2%, 0) scale(0.96);
+  }
+}
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+@keyframes typing {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.4;
+  }
+  30% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
+}
+@keyframes gradient-x {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+@keyframes glow {
+  0%,
+  100% {
+    box-shadow:
+      0 10px 30px -8px rgb(109 74 255 / 0.55),
+      0 0 0 0 rgb(109 74 255 / 0.35);
+  }
+  50% {
+    box-shadow:
+      0 10px 30px -8px rgb(109 74 255 / 0.55),
+      0 0 0 12px rgb(109 74 255 / 0);
+  }
+}
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    @apply bg-canvas text-fg;
+    font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  }
+  ::selection {
+    background: color-mix(in oklab, var(--ui-brand) 28%, transparent);
+  }
+  /* Scrollbars that belong to the theme rather than the OS. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--ui-line-strong) transparent;
+  }
+  :focus-visible {
+    outline: 2px solid var(--ui-brand);
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-2xl border border-line bg-surface shadow-card;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-3.5 py-2 text-sm font-medium whitespace-nowrap transition-all duration-150 select-none active:scale-[0.97] disabled:pointer-events-none disabled:opacity-50;
+  }
+  .btn-sm {
+    @apply rounded-lg px-2.5 py-1.5 text-xs;
+  }
+  .btn-icon {
+    @apply size-9 p-0;
+  }
+  .btn-sm.btn-icon {
+    @apply size-8 p-0;
+  }
+  .btn-primary {
+    @apply bg-linear-to-r from-brand to-brand-2 text-white shadow-[0_8px_22px_-8px_var(--ui-brand)] hover:shadow-[0_12px_28px_-8px_var(--ui-brand)] hover:brightness-110;
+  }
+  .btn-secondary {
+    @apply border border-line bg-surface text-fg shadow-xs hover:border-line-strong hover:bg-surface-2;
+  }
+  .btn-ghost {
+    @apply text-fg-muted hover:bg-surface-2 hover:text-fg;
+  }
+  .btn-danger {
+    @apply text-red-600 hover:bg-red-500/10 dark:text-red-300;
+  }
+
+  .input {
+    @apply w-full rounded-xl border border-line bg-surface-2 px-3 py-2 text-sm text-fg transition placeholder:text-fg-subtle hover:border-line-strong focus:border-brand focus:bg-surface focus:ring-4 focus:ring-brand/15 focus:outline-none;
+  }
+  .label {
+    @apply mb-1.5 block text-xs font-medium text-fg-muted;
+  }
+
+  .alert {
+    @apply flex items-start gap-2.5 rounded-xl border px-3 py-2.5 text-xs leading-relaxed;
+  }
+  .alert-danger {
+    @apply border-red-500/25 bg-red-500/8 text-red-700 dark:text-red-300;
+  }
+  .alert-warning {
+    @apply border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-200;
+  }
+  .alert-success {
+    @apply border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300;
+  }
+  .alert-info {
+    @apply border-line bg-surface-2 text-fg-muted;
+  }
+
+  .kbd {
+    @apply inline-flex h-5 min-w-5 items-center justify-center rounded-md border border-line bg-surface px-1.5 font-sans text-[10px] font-medium text-fg-subtle shadow-xs;
+  }
+
+  /* Gradient-filled text for names and the wordmark. */
+  .text-gradient {
+    @apply bg-linear-to-r from-brand via-fuchsia-500 to-brand-2 bg-clip-text text-transparent dark:via-fuchsia-400;
+    background-size: 200% auto;
+  }
+
+  .skeleton {
+    @apply rounded-md;
+    background: linear-gradient(
+      90deg,
+      var(--ui-surface-2) 0%,
+      var(--ui-surface-3) 40%,
+      var(--ui-surface-2) 80%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.6s linear infinite;
+  }
+}
+
+/*
+ * Theme switch: the new theme grows out of the toggle as a circle. Scoped to a
+ * class so no other view transition picks it up. `--vt-x`, `--vt-y` and
+ * `--vt-r` are set on <html> by `setThemePreference` just before it starts.
+ */
+:root.theme-transition::view-transition-old(root),
+:root.theme-transition::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+:root.theme-transition::view-transition-new(root) {
+  animation: theme-reveal 0.55s cubic-bezier(0.4, 0, 0.2, 1);
+}
+@keyframes theme-reveal {
+  from {
+    clip-path: circle(0 at var(--vt-x, 50%) var(--vt-y, 0));
+  }
+  to {
+    clip-path: circle(var(--vt-r, 150%) at var(--vt-x, 50%) var(--vt-y, 0));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    /* Staggered entrances would otherwise sit invisible through their delay. */
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
+  }
 }

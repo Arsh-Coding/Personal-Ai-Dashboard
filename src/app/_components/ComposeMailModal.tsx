@@ -2,7 +2,10 @@
 
 import { useState } from "react";
 import { api } from "@/trpc/react";
-import { ModalPortal } from "./ModalPortal";
+import { ModalHeader, ModalPortal } from "./ModalPortal";
+import { useToast } from "./Toaster";
+import { Spinner } from "./primitives";
+import { AlertCircleIcon, ComposeIcon, SendIcon } from "./icons";
 
 interface ComposeMailModalProps {
   isOpen: boolean;
@@ -15,83 +18,122 @@ export function ComposeMailModal({ isOpen, onClose, onSuccess }: ComposeMailModa
   const [to, setTo] = useState("");
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const toast = useToast();
 
   const sendMessage = api.mail.sendMessage.useMutation({
     onSuccess: (res) => {
       if (res.success) {
+        toast({ tone: "success", title: "Email sent", description: `To ${to}` });
         setTo("");
         setSubject("");
         setBody("");
+        setError(null);
         onSuccess();
         onClose();
       } else {
-        alert(res.error || "Failed to send email");
+        // Kept in the modal rather than an alert: the draft is still here to fix.
+        setError(res.error || "Failed to send email");
       }
     },
+    onError: (e) => setError(e.message),
   });
+
+  const submit = () => {
+    if (!to || !subject || !body || sendMessage.isPending) return;
+    setError(null);
+    sendMessage.mutate({ to, subject, body });
+  };
 
   const handleSubmit = (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!to || !subject || !body) return;
-
-    sendMessage.mutate({ to, subject, body });
+    submit();
   };
 
   return (
     <ModalPortal isOpen={isOpen} onClose={onClose} cardClassName="max-w-lg">
-      <h3 className="text-lg font-semibold text-slate-100">Compose Email</h3>
-      <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+      <ModalHeader
+        icon={<ComposeIcon className="size-5" />}
+        title="New message"
+        subtitle="Sent from your connected Gmail account."
+        onClose={onClose}
+      />
+      <form
+        onSubmit={handleSubmit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+            e.preventDefault();
+            submit();
+          }
+        }}
+        className="mt-5 space-y-4"
+      >
         <div>
-          <label className="block text-xs font-medium text-slate-300">To</label>
+          <label htmlFor="compose-to" className="label">
+            To
+          </label>
           <input
+            id="compose-to"
             type="email"
             required
+            autoFocus
             placeholder="recipient@example.com"
             value={to}
             onChange={(e) => setTo(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 p-2.5 text-sm text-slate-100 focus:border-indigo-500 focus:outline-none"
+            className="input"
           />
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-slate-300">Subject</label>
+          <label htmlFor="compose-subject" className="label">
+            Subject
+          </label>
           <input
+            id="compose-subject"
             type="text"
             required
             placeholder="Project Update"
             value={subject}
             onChange={(e) => setSubject(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 p-2.5 text-sm text-slate-100 focus:border-indigo-500 focus:outline-none"
+            className="input"
           />
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-slate-300">Body</label>
+          <label htmlFor="compose-body" className="label">
+            Message
+          </label>
           <textarea
+            id="compose-body"
             required
             placeholder="Write your email here..."
             value={body}
             onChange={(e) => setBody(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 p-2.5 text-sm text-slate-100 focus:border-indigo-500 focus:outline-none"
-            rows={5}
+            className="input resize-y leading-relaxed"
+            rows={7}
           />
         </div>
 
-        <div className="mt-6 flex justify-end gap-3 pt-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg border border-slate-800 bg-slate-800 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-700"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={sendMessage.isPending}
-            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
-          >
-            {sendMessage.isPending ? "Sending..." : "Send Email"}
-          </button>
+        {error && (
+          <div role="alert" className="alert alert-danger">
+            <AlertCircleIcon className="mt-px size-4" />
+            {error}
+          </div>
+        )}
+
+        <div className="flex items-center justify-between gap-3 pt-1">
+          <p className="hidden text-[11px] text-fg-subtle sm:block">
+            <kbd className="kbd">Ctrl</kbd> + <kbd className="kbd">Enter</kbd> to send
+          </p>
+          <div className="ml-auto flex gap-2">
+            <button type="button" onClick={onClose} className="btn btn-secondary">
+              Cancel
+            </button>
+            <button type="submit" disabled={sendMessage.isPending} className="btn btn-primary">
+              {sendMessage.isPending ? <Spinner className="size-3.5" /> : <SendIcon />}
+              {sendMessage.isPending ? "Sending..." : "Send email"}
+            </button>
+          </div>
         </div>
       </form>
     </ModalPortal>

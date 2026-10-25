@@ -1,8 +1,26 @@
 "use client";
 
 import { api } from "@/trpc/react";
-import { ModalPortal } from "./ModalPortal";
+import { ModalHeader, ModalPortal } from "./ModalPortal";
+import { useToast } from "./Toaster";
+import { Spinner } from "./primitives";
 import { pluginMeta, type PluginId, type TenantConnection } from "@/lib/plugins";
+import {
+  AlertCircleIcon,
+  AlertTriangleIcon,
+  ArrowRightIcon,
+  CalendarIcon,
+  CheckIcon,
+  LinkIcon,
+  MailIcon,
+  VideoIcon,
+} from "./icons";
+
+const PLUGIN_ICONS: Record<PluginId, typeof MailIcon> = {
+  gmail: MailIcon,
+  googlecalendar: CalendarIcon,
+  googlemeet: VideoIcon,
+};
 
 interface ConnectAccountModalProps {
   isOpen: boolean;
@@ -26,13 +44,14 @@ export function ConnectAccountModal({
   status,
   error,
 }: ConnectAccountModalProps) {
-  const connectedCount =
-    (status?.plugins.length ?? 0) - (status?.pending.length ?? 0);
+  const toast = useToast();
+  const total = status?.plugins.length ?? 0;
+  const connectedCount = total - (status?.pending.length ?? 0);
 
   const getConnectUrl = api.auth.getConnectUrl.useMutation({
     onSuccess: (res) => {
       if (!res.success) {
-        alert(res.error);
+        toast({ tone: "error", title: "Couldn't start authorization", description: res.error });
         return;
       }
       // Full-page navigation rather than a popup: the consent screen refuses to
@@ -40,6 +59,8 @@ export function ConnectAccountModal({
       // /oauth/callback, which redirects back here with the result.
       window.location.href = res.url;
     },
+    onError: (e) =>
+      toast({ tone: "error", title: "Couldn't start authorization", description: e.message }),
   });
 
   // No tenant sent: the server authorizes whichever account the session is on.
@@ -57,53 +78,80 @@ export function ConnectAccountModal({
 
   return (
     <ModalPortal isOpen={isOpen} onClose={onClose} cardClassName="max-w-md">
-      <h3 className="text-lg font-semibold text-slate-100">
-        {isReauth ? "Reconnect" : "Connect"} Google
-      </h3>
-      <p className="mt-1 text-xs text-slate-400">
-        {isReauth ? (
-          <>
-            Google expired this account&apos;s authorization, so calls fail with{" "}
-            <code className="text-slate-300">invalid_grant</code>. A refresh
-            token can&apos;t be renewed — authorize again as{" "}
-            <span className="font-medium text-slate-200">{email}</span> to issue
-            a new one.
-          </>
-        ) : (
-          <>
-            Corsair has no permission to read your mail or calendar yet, so both
-            come back empty. Grant access as{" "}
-            <span className="font-medium text-slate-200">{email}</span> to
-            connect them.
-          </>
-        )}
-      </p>
+      <ModalHeader
+        icon={<LinkIcon className="size-5" />}
+        title={`${isReauth ? "Reconnect" : "Connect"} Google`}
+        onClose={onClose}
+        subtitle={
+          isReauth ? (
+            <>
+              Google expired this account&apos;s authorization, so calls fail with{" "}
+              <code className="rounded bg-surface-2 px-1 text-fg">invalid_grant</code>. A refresh
+              token can&apos;t be renewed — authorize again as{" "}
+              <span className="font-medium text-fg">{email}</span> to issue a new one.
+            </>
+          ) : (
+            <>
+              Corsair has no permission to read your mail or calendar yet, so both come back
+              empty. Grant access as <span className="font-medium text-fg">{email}</span> to
+              connect them.
+            </>
+          )
+        }
+      />
 
       {error && (
-        <div className="mt-4 rounded-lg border border-red-900/60 bg-red-950/40 p-3 text-xs text-red-300">
+        <div role="alert" className="alert alert-danger mt-4">
+          <AlertCircleIcon className="mt-px size-4" />
           Authorization failed: {error}
         </div>
       )}
 
-      <div className="mt-4 space-y-2">
-        {(status?.plugins ?? []).map((plugin) => {
+      {total > 0 && (
+        <div className="mt-5">
+          <div className="flex items-center justify-between text-[11px] font-medium">
+            <span className="text-fg-muted">Setup progress</span>
+            <span className="text-fg-subtle tabular-nums">
+              {connectedCount} of {total} connected
+            </span>
+          </div>
+          <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-surface-3">
+            <div
+              className="h-full rounded-full bg-linear-to-r from-brand to-emerald-500 transition-[width] duration-700 ease-out"
+              style={{ width: `${(connectedCount / total) * 100}%` }}
+            />
+          </div>
+        </div>
+      )}
+
+      <ul className="mt-4 space-y-2">
+        {(status?.plugins ?? []).map((plugin, i) => {
           const isConnected = plugin.state === "connected";
           const isExpired = plugin.state === "needs_reauth";
+          const Icon = PLUGIN_ICONS[plugin.id];
           return (
-            <div
+            <li
               key={plugin.id}
-              className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950/60 p-3"
+              style={{ animationDelay: `${i * 60}ms` }}
+              className="flex animate-fade-up items-center gap-3 rounded-xl border border-line bg-surface-2/60 p-3"
             >
-              <div>
-                <div className="text-sm font-medium text-slate-200">
-                  {pluginMeta(plugin.id).label}
-                </div>
+              <div
+                className={`flex size-9 shrink-0 items-center justify-center rounded-lg ring-1 ${
+                  isConnected
+                    ? "bg-emerald-500/10 text-emerald-600 ring-emerald-500/25 dark:text-emerald-400"
+                    : isExpired
+                      ? "bg-amber-500/10 text-amber-600 ring-amber-500/25 dark:text-amber-400"
+                      : "bg-surface text-fg-muted ring-line"
+                }`}
+              >
+                <Icon />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-medium text-fg">{pluginMeta(plugin.id).label}</div>
                 <div
-                  className={
-                    isExpired
-                      ? "text-[11px] text-amber-400"
-                      : "text-[11px] text-slate-500"
-                  }
+                  className={`text-[11px] ${
+                    isExpired ? "text-amber-600 dark:text-amber-400" : isConnected ? "text-emerald-600 dark:text-emerald-400" : "text-fg-subtle"
+                  }`}
                 >
                   {plugin.state === "missing_credentials"
                     ? "App credentials not configured — run corsair setup"
@@ -116,57 +164,51 @@ export function ConnectAccountModal({
               </div>
 
               {isConnected ? (
-                <span className="text-xs font-semibold text-emerald-400">✓</span>
+                <span className="flex size-7 items-center justify-center rounded-full bg-emerald-500 text-white shadow-sm shadow-emerald-500/40">
+                  <CheckIcon className="size-3.5" strokeWidth={3} />
+                </span>
               ) : (
                 <button
                   type="button"
                   onClick={() => connect(plugin.id)}
-                  disabled={
-                    getConnectUrl.isPending ||
-                    plugin.state === "missing_credentials"
-                  }
-                  className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
+                  disabled={getConnectUrl.isPending || plugin.state === "missing_credentials"}
+                  className="btn btn-secondary btn-sm"
                 >
-                  {getConnectUrl.isPending
-                    ? "Opening..."
-                    : isExpired
-                      ? "Reconnect"
-                      : "Connect"}
+                  {getConnectUrl.isPending ? "Opening..." : isExpired ? "Reconnect" : "Connect"}
                 </button>
               )}
-            </div>
+            </li>
           );
         })}
-      </div>
+      </ul>
 
       {/* Each plugin is its own OAuth grant, so a fresh account takes two trips
           through the consent screen. Saying so up front stops the second prompt
           from looking like the first one failed. */}
-      {nextPending && (status?.plugins.length ?? 0) > 1 && (
-        <p className="mt-3 text-[11px] text-slate-500">
-          {connectedCount} of {status?.plugins.length} connected — each Google
-          service is authorized separately.
+      {nextPending && total > 1 && (
+        <p className="mt-3 flex items-start gap-1.5 text-[11px] leading-relaxed text-fg-subtle">
+          <AlertTriangleIcon className="mt-px size-3.5" />
+          Each Google service is authorized separately, so you&apos;ll see Google&apos;s consent
+          screen once per service.
         </p>
       )}
 
-      <div className="mt-6 flex justify-end gap-3">
-        <button
-          type="button"
-          onClick={onClose}
-          className="rounded-lg border border-slate-800 bg-slate-800 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-700"
-        >
-          Close
+      <div className="mt-6 flex justify-end gap-2">
+        <button type="button" onClick={onClose} className="btn btn-secondary">
+          {nextPending ? "Later" : "Close"}
         </button>
         {nextPending && (
           <button
             type="button"
             onClick={() => connect(nextPending)}
             disabled={getConnectUrl.isPending}
-            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
+            className="btn btn-primary"
           >
+            {getConnectUrl.isPending ? <Spinner className="size-3.5" /> : null}
             {getConnectUrl.isPending
               ? "Opening Google..."
               : `${isReauth ? "Reconnect" : "Connect"} ${pluginMeta(nextPending).label}`}
+            {!getConnectUrl.isPending && <ArrowRightIcon />}
           </button>
         )}
       </div>

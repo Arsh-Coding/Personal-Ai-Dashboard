@@ -137,6 +137,7 @@ Without the key, the rest of the app works normally and the assistant says it is
 | `GOOGLE_GENERATIVE_AI_API_KEY` | For the assistant | [Google AI Studio → API keys](https://aistudio.google.com/apikey) |
 | `GOOGLE_SIGNIN_REDIRECT_URI` | No | Override for the sign-in callback. Derived from the request when unset. |
 | `CHAT_MODEL` | No | Any Gemini model id. Default `gemini-3.5-flash-lite`. |
+| `GOOGLE_SITE_VERIFICATION` | For brand verification | [Google Search Console](https://search.google.com/search-console) → URL-prefix property → **HTML tag** method → the `content` value |
 | Google Client ID and secret | Yes | Google Cloud console → Google Auth Platform → **Clients**. Stored in Corsair by step 6, not in env. |
 
 `.env` is gitignored. `.env.example` is the only env file meant to be committed.
@@ -182,6 +183,16 @@ Signing in only asks for basic profile scopes, which never need verification. Th
 - **Authorised domains:** only domains you actually use. Remove any you don't own, and remove the matching redirect URIs from the OAuth client.
 
 Then go to **Audience → Publish app** and confirm.
+
+**Brand verification** (optional for an unverified publish; it's what shows your app name on the consent screen) requires proving you own the homepage domain in Google Search Console:
+
+1. In [Search Console](https://search.google.com/search-console), signed in as an **Owner of the Google Cloud project**, add a property of type **URL prefix** with your exact homepage, e.g. `https://your-app.vercel.app/`. A "Domain" property needs DNS records, which a `*.vercel.app` address can't have.
+2. Pick the **HTML tag** method and copy only the `content="..."` value.
+3. Set it as `GOOGLE_SITE_VERIFICATION` in Vercel and redeploy. The app adds the `<meta name="google-site-verification">` tag to every page.
+4. Click **Verify** in Search Console.
+5. Wait 24 hours, then in Google Auth Platform → Branding choose **I have fixed the issues → Request reverification**.
+
+Every authorised domain must be one you can verify this way, so remove any you don't own. The public homepage (signed out) names the app, describes it and explains how Google data is used, which Google's reviewers also check.
 
 **After you publish,** reconnect each Google service once from the dashboard. Grants made while in Testing keep their 7-day expiry, and only new ones are long-lived.
 
